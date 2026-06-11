@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 public class TransactionResponse {
     private Long id;
     private BigDecimal amount;
-    private String transactionType;   // DEBIT hoặc CREDIT
+    private String transactionType;
     private String description;
     private String fromAccountNumber;
     private String toAccountNumber;

@@ -8,11 +8,13 @@ import org.example.rikkeibank.dto.response.UserResponse;
 import org.example.rikkeibank.service.UserService;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('ADMIN')")
 public class UserController {
 
     private final UserService userService;
@@ -20,7 +22,8 @@ public class UserController {
     @GetMapping
     public Page<UserResponse> findAll(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "5") int size) {
+            @RequestParam(defaultValue = "5") int size
+    ) {
         return userService.findAll(page, size);
     }
 
@@ -35,8 +38,10 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<UserResponse> update(@PathVariable Long id,
-                                               @Valid @RequestBody UserUpdateRequest request) {
+    public ResponseEntity<UserResponse> update(
+            @PathVariable Long id,
+            @Valid @RequestBody UserUpdateRequest request
+    ) {
         return ResponseEntity.ok(userService.update(id, request));
     }
 
