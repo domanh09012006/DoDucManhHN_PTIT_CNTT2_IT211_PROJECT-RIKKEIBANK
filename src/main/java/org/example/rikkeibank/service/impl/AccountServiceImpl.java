@@ -1,6 +1,7 @@
 package org.example.rikkeibank.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import org.example.rikkeibank.dto.request.ChangePinRequest;
 import org.example.rikkeibank.dto.request.CreateAccountRequest;
 import org.example.rikkeibank.dto.request.UpdateAccountRequest;
 import org.example.rikkeibank.dto.response.AccountResponse;
@@ -14,6 +15,7 @@ import org.example.rikkeibank.service.AccountService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 
@@ -98,5 +100,21 @@ public class AccountServiceImpl implements AccountService {
                 .status(account.getStatus().name())
                 .userId(account.getUser() != null ? account.getUser().getId() : null)
                 .build();
+    }
+    @Override
+    @Transactional
+    public AccountResponse changePin(String accountNumber, ChangePinRequest request) {
+
+        Account account = accountRepository.findByAccountNumber(accountNumber)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản"));
+
+        if (!account.getPinCode().equals(request.getOldPin())) {
+            throw new RuntimeException("Mã PIN cũ không đúng");
+        }
+
+        account.setPinCode(request.getNewPin());
+        account = accountRepository.save(account);
+
+        return mapToResponse(account);
     }
 }

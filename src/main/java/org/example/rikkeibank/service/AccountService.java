@@ -1,5 +1,6 @@
 package org.example.rikkeibank.service;
 
+import org.example.rikkeibank.dto.request.ChangePinRequest;
 import org.example.rikkeibank.dto.request.CreateAccountRequest;
 import org.example.rikkeibank.dto.request.UpdateAccountRequest;
 import org.example.rikkeibank.dto.response.AccountResponse;
@@ -19,4 +20,5 @@ public interface AccountService {
     AccountResponse update(Long id, UpdateAccountRequest request);
 
     void delete(Long id);
+    AccountResponse changePin(String accountNumber, ChangePinRequest request);
 }

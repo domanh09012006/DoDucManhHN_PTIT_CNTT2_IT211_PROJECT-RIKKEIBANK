@@ -1,6 +1,7 @@
 package org.example.rikkeibank.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.example.rikkeibank.dto.request.ChangePinRequest;
 import org.example.rikkeibank.dto.request.CreateAccountRequest;
 import org.example.rikkeibank.dto.request.UpdateAccountRequest;
 import org.example.rikkeibank.dto.response.AccountResponse;
@@ -57,5 +58,12 @@ public class AccountController {
     ) {
         accountService.delete(id);
         return "Xóa tài khoản thành công";
+    }
+    @PutMapping("/change-pin/{accountNumber}")
+    public AccountResponse changePin(
+            @PathVariable String accountNumber,
+            @RequestBody ChangePinRequest request) {
+
+        return accountService.changePin(accountNumber, request);
     }
 }
