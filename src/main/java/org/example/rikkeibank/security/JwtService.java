@@ -17,6 +17,9 @@ public class JwtService {
     @Value("${jwt.access-token-expiration}")
     private long accessExpiration;
 
+    @Value("${jwt.refresh-token-expiration}")
+    private long refreshExpiration;
+
     private SecretKey getSigningKey() {
         return Keys.hmacShaKeyFor(secretKey.getBytes());
     }
@@ -46,5 +49,16 @@ public class JwtService {
         } catch (Exception e) {
             return false;
         }
+    }
+    public String generateRefreshToken(String username) {
+        return Jwts.builder()
+                .subject(username)
+                .issuedAt(new Date())
+                .expiration(
+                        new Date(System.currentTimeMillis()
+                                + refreshExpiration)
+                )
+                .signWith(getSigningKey())
+                .compact();
     }
 }

@@ -1,6 +1,7 @@
 package org.example.rikkeibank.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.example.rikkeibank.dto.request.KycApproveRequest;
 import org.example.rikkeibank.dto.request.KycUploadRequest;
 import org.example.rikkeibank.entity.KycProfile;
 import org.example.rikkeibank.service.KycService;
@@ -22,6 +23,15 @@ public class KycController {
         KycProfile kycProfile = kycService.uploadKyc(userId,
                 request.getFrontImage(),
                 request.getBackImage());
+        return ResponseEntity.ok(kycProfile);
+    }
+
+    @PutMapping("/approve/{kycId}")
+    public ResponseEntity<KycProfile> approveKyc(
+            @PathVariable Long kycId,
+            @RequestBody KycApproveRequest request) {
+
+        KycProfile kycProfile = kycService.approveKyc(kycId, request);
         return ResponseEntity.ok(kycProfile);
     }
 }

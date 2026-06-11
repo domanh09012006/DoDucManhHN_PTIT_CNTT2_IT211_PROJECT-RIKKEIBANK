@@ -1,18 +1,32 @@
 package org.example.rikkeibank.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import org.example.rikkeibank.dto.request.LoginRequest;
+import org.example.rikkeibank.dto.request.LogoutRequest;
+import org.example.rikkeibank.dto.request.RefreshTokenRequest;
 import org.example.rikkeibank.dto.request.RegisterRequest;
+import org.example.rikkeibank.dto.response.LoginResponse;
+import org.example.rikkeibank.dto.response.RefreshTokenResponse;
 import org.example.rikkeibank.dto.response.UserResponse;
 import org.example.rikkeibank.entity.Account;
+import org.example.rikkeibank.entity.RefreshToken;
 import org.example.rikkeibank.entity.User;
 import org.example.rikkeibank.enums.AccountStatus;
 import org.example.rikkeibank.enums.Role;
+import org.example.rikkeibank.exception.RefreshTokenExpiredException;
+import org.example.rikkeibank.exception.RefreshTokenRevokedException;
+import org.example.rikkeibank.exception.ResourceNotFoundException;
 import org.example.rikkeibank.repository.AccountRepository;
+import org.example.rikkeibank.repository.RefreshTokenRepository;
 import org.example.rikkeibank.repository.UserRepository;
+import org.example.rikkeibank.security.JwtService;
 import org.example.rikkeibank.service.AuthService;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -21,6 +35,9 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final AccountRepository accountRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuthenticationManager authenticationManager;
+    private final RefreshTokenRepository refreshTokenRepository;
+    private final JwtService jwtService;
 
     @Override
     @Transactional
@@ -31,7 +48,9 @@ public class AuthServiceImpl implements AuthService {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email đã tồn tại");
         }
-
+        if (userRepository.existsByPhone(request.getPhone())) {
+            throw new RuntimeException("Phone đã tồn tại");
+        }
         User user = User.builder()
                 .username(request.getUsername())
                 .password(passwordEncoder.encode(request.getPassword()))
@@ -69,5 +88,112 @@ public class AuthServiceImpl implements AuthService {
                 .isKyc(user.getIsKyc())
                 .enabled(user.getEnabled())
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public LoginResponse login(LoginRequest request) {
+
+        authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(
+                        request.getUsername(),
+                        request.getPassword()
+                )
+        );
+
+        User user = userRepository
+                .findByUsername(request.getUsername())
+                .orElseThrow();
+
+        String accessToken =
+                jwtService.generateAccessToken(user.getUsername());
+
+        String refreshToken =
+                jwtService.generateRefreshToken(user.getUsername());
+
+        RefreshToken token = RefreshToken.builder()
+                .token(refreshToken)
+                .user(user)
+                .expiryDate(LocalDateTime.now().plusDays(7))
+                .revoked(false)
+                .build();
+
+        refreshTokenRepository.save(token);
+
+        return LoginResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .tokenType("Bearer")
+                .build();
+    }
+    @Override
+    @Transactional
+    public RefreshTokenResponse refreshToken(
+            RefreshTokenRequest request
+    ) {
+
+        RefreshToken oldToken =
+                refreshTokenRepository
+                        .findByToken(request.getRefreshToken())
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Refresh token không tồn tại"));
+
+        if (oldToken.getRevoked()) {
+            throw new RefreshTokenRevokedException(
+                    "Refresh token đã bị thu hồi"
+            );
+        }
+
+        if (oldToken.getExpiryDate().isBefore(LocalDateTime.now())) {
+            throw new RefreshTokenExpiredException(
+                    "Refresh token đã hết hạn"
+            );
+        }
+
+        oldToken.setRevoked(true);
+        refreshTokenRepository.save(oldToken);
+
+        String username =
+                jwtService.extractUsername(
+                        request.getRefreshToken()
+                );
+
+        String newAccessToken =
+                jwtService.generateAccessToken(username);
+
+        String newRefreshToken =
+                jwtService.generateRefreshToken(username);
+
+        RefreshToken token = RefreshToken.builder()
+                .token(newRefreshToken)
+                .user(oldToken.getUser())
+                .expiryDate(LocalDateTime.now().plusDays(7))
+                .revoked(false)
+                .build();
+
+        refreshTokenRepository.save(token);
+
+        return RefreshTokenResponse.builder()
+                .accessToken(newAccessToken)
+                .refreshToken(newRefreshToken)
+                .tokenType("Bearer")
+                .build();
+    }
+    @Override
+    @Transactional
+    public void logout(LogoutRequest request) {
+
+        RefreshToken refreshToken =
+                refreshTokenRepository
+                        .findByToken(request.getRefreshToken())
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Refresh token không tồn tại"
+                                ));
+
+        refreshToken.setRevoked(true);
+
+        refreshTokenRepository.save(refreshToken);
     }
 }
