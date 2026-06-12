@@ -10,6 +10,7 @@ import org.example.rikkeibank.dto.response.RefreshTokenResponse;
 import org.example.rikkeibank.dto.response.UserResponse;
 import org.example.rikkeibank.entity.Account;
 import org.example.rikkeibank.entity.RefreshToken;
+import org.example.rikkeibank.entity.RevokedToken;
 import org.example.rikkeibank.entity.User;
 import org.example.rikkeibank.enums.AccountStatus;
 import org.example.rikkeibank.enums.Role;
@@ -18,14 +19,16 @@ import org.example.rikkeibank.exception.RefreshTokenRevokedException;
 import org.example.rikkeibank.exception.ResourceNotFoundException;
 import org.example.rikkeibank.repository.AccountRepository;
 import org.example.rikkeibank.repository.RefreshTokenRepository;
+import org.example.rikkeibank.repository.RevokedTokenRepository;
 import org.example.rikkeibank.repository.UserRepository;
 import org.example.rikkeibank.security.JwtService;
 import org.example.rikkeibank.service.AuthService;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+
 import java.time.LocalDateTime;
 
 @Service
@@ -37,6 +40,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final RevokedTokenRepository revokedTokenRepository;
     private final JwtService jwtService;
 
     @Override
@@ -51,6 +55,7 @@ public class AuthServiceImpl implements AuthService {
         if (userRepository.existsByPhone(request.getPhone())) {
             throw new RuntimeException("Phone đã tồn tại");
         }
+
         User user = User.builder()
                 .username(request.getUsername())
                 .password(passwordEncoder.encode(request.getPassword()))
@@ -93,7 +98,6 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public LoginResponse login(LoginRequest request) {
-
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         request.getUsername(),
@@ -101,15 +105,11 @@ public class AuthServiceImpl implements AuthService {
                 )
         );
 
-        User user = userRepository
-                .findByUsername(request.getUsername())
+        User user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow();
 
-        String accessToken =
-                jwtService.generateAccessToken(user.getUsername());
-
-        String refreshToken =
-                jwtService.generateRefreshToken(user.getUsername());
+        String accessToken = jwtService.generateAccessToken(user.getUsername());
+        String refreshToken = jwtService.generateRefreshToken(user.getUsername());
 
         RefreshToken token = RefreshToken.builder()
                 .token(refreshToken)
@@ -126,44 +126,27 @@ public class AuthServiceImpl implements AuthService {
                 .tokenType("Bearer")
                 .build();
     }
+
     @Override
     @Transactional
-    public RefreshTokenResponse refreshToken(
-            RefreshTokenRequest request
-    ) {
-
-        RefreshToken oldToken =
-                refreshTokenRepository
-                        .findByToken(request.getRefreshToken())
-                        .orElseThrow(() ->
-                                new ResourceNotFoundException(
-                                        "Refresh token không tồn tại"));
+    public RefreshTokenResponse refreshToken(RefreshTokenRequest request) {
+        RefreshToken oldToken = refreshTokenRepository.findByToken(request.getRefreshToken())
+                .orElseThrow(() -> new ResourceNotFoundException("Refresh token không tồn tại"));
 
         if (oldToken.getRevoked()) {
-            throw new RefreshTokenRevokedException(
-                    "Refresh token đã bị thu hồi"
-            );
+            throw new RefreshTokenRevokedException("Refresh token đã bị thu hồi");
         }
 
         if (oldToken.getExpiryDate().isBefore(LocalDateTime.now())) {
-            throw new RefreshTokenExpiredException(
-                    "Refresh token đã hết hạn"
-            );
+            throw new RefreshTokenExpiredException("Refresh token đã hết hạn");
         }
 
         oldToken.setRevoked(true);
         refreshTokenRepository.save(oldToken);
 
-        String username =
-                jwtService.extractUsername(
-                        request.getRefreshToken()
-                );
-
-        String newAccessToken =
-                jwtService.generateAccessToken(username);
-
-        String newRefreshToken =
-                jwtService.generateRefreshToken(username);
+        String username = jwtService.extractUsername(request.getRefreshToken());
+        String newAccessToken = jwtService.generateAccessToken(username);
+        String newRefreshToken = jwtService.generateRefreshToken(username);
 
         RefreshToken token = RefreshToken.builder()
                 .token(newRefreshToken)
@@ -180,20 +163,31 @@ public class AuthServiceImpl implements AuthService {
                 .tokenType("Bearer")
                 .build();
     }
+
     @Override
     @Transactional
-    public void logout(LogoutRequest request) {
-
-        RefreshToken refreshToken =
-                refreshTokenRepository
-                        .findByToken(request.getRefreshToken())
-                        .orElseThrow(() ->
-                                new ResourceNotFoundException(
-                                        "Refresh token không tồn tại"
-                                ));
+    public void logout(String accessToken, LogoutRequest request) {
+        RefreshToken refreshToken = refreshTokenRepository.findByToken(request.getRefreshToken())
+                .orElseThrow(() -> new ResourceNotFoundException("Refresh token không tồn tại"));
 
         refreshToken.setRevoked(true);
-
         refreshTokenRepository.save(refreshToken);
+
+        String token = extractBearerToken(accessToken);
+
+        if (!revokedTokenRepository.existsByToken(token)) {
+            revokedTokenRepository.save(
+                    RevokedToken.builder()
+                            .token(token)
+                            .build()
+            );
+        }
+    }
+
+    private String extractBearerToken(String authorizationHeader) {
+        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
+            throw new RuntimeException("Thiếu hoặc sai Authorization header");
+        }
+        return authorizationHeader.substring(7);
     }
 }

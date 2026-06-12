@@ -18,7 +18,7 @@ public class KycController {
     private final KycService kycService;
 
     @PostMapping("/upload")
-    @PreAuthorize("hasAnyRole('CUSTOMER','ADMIN')")
+    @PreAuthorize("hasRole('CUSTOMER')")
     public ResponseEntity<KycProfile> uploadKyc(
             @RequestParam Long userId,
             @Valid @ModelAttribute KycUploadRequest request
@@ -32,7 +32,7 @@ public class KycController {
     }
 
     @PutMapping("/approve/{kycId}")
-    @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
+    @PreAuthorize("hasRole('STAFF')")
     public ResponseEntity<KycProfile> approveKyc(
             @PathVariable Long kycId,
             @Valid @RequestBody KycApproveRequest request

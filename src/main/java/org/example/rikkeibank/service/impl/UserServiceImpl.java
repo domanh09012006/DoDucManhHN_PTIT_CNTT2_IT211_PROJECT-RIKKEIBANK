@@ -96,12 +96,16 @@ public class UserServiceImpl implements UserService {
                 .map(this::mapToResponse);
     }
 
+
     @Override
     public void delete(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User khong tim thay"));
-        userRepository.delete(user);
+
+        user.setEnabled(false);
+        userRepository.save(user);
     }
+
 
     private UserResponse mapToResponse(User user) {
         return UserResponse.builder()

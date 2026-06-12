@@ -16,6 +16,6 @@ public class UserUpdateRequest {
     private String email;
 
     @NotBlank
-    @Pattern(regexp = "^[0-9]{9,15}$", message = "Phone chỉ được chứa số từ 9 đến 15 chữ số")
+    @Pattern(regexp = "^0\\d{9}$",message = "Số điện thoại phải bắt đầu bằng 0 và gồm 10 chữ số")
     private String phone;
 }

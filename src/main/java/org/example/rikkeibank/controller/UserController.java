@@ -12,9 +12,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/users")
+@RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN','STAFF')")
 public class UserController {
 
     private final UserService userService;
@@ -33,7 +33,9 @@ public class UserController {
     }
 
     @PostMapping
-    public ResponseEntity<UserResponse> create(@Valid @RequestBody UserCreateRequest request) {
+    public ResponseEntity<UserResponse> create(
+            @Valid @RequestBody UserCreateRequest request
+    ) {
         return ResponseEntity.ok(userService.create(request));
     }
 

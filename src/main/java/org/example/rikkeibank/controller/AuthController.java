@@ -11,10 +11,11 @@ import org.example.rikkeibank.dto.response.RefreshTokenResponse;
 import org.example.rikkeibank.dto.response.UserResponse;
 import org.example.rikkeibank.service.AuthService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
 public class AuthController {
 
@@ -24,34 +25,30 @@ public class AuthController {
     public ResponseEntity<UserResponse> register(
             @Valid @RequestBody RegisterRequest request
     ) {
-        return ResponseEntity.ok(
-                authService.register(request)
-        );
+        return ResponseEntity.ok(authService.register(request));
     }
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(
             @Valid @RequestBody LoginRequest request
     ) {
-        return ResponseEntity.ok(
-                authService.login(request)
-        );
+        return ResponseEntity.ok(authService.login(request));
     }
 
     @PostMapping("/refresh")
     public ResponseEntity<RefreshTokenResponse> refreshToken(
             @Valid @RequestBody RefreshTokenRequest request
     ) {
-        return ResponseEntity.ok(
-                authService.refreshToken(request)
-        );
+        return ResponseEntity.ok(authService.refreshToken(request));
     }
 
     @PostMapping("/logout")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<String> logout(
+            @RequestHeader("Authorization") String authorizationHeader,
             @Valid @RequestBody LogoutRequest request
     ) {
-        authService.logout(request);
+        authService.logout(authorizationHeader, request);
         return ResponseEntity.ok("Đăng xuất thành công");
     }
 }

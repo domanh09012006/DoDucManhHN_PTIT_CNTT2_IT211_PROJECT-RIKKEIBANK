@@ -85,12 +85,13 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     public void delete(Long id) {
-
         Account account = accountRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản"));
 
-        accountRepository.delete(account);
+        account.setStatus(AccountStatus.BLOCKED);
+        accountRepository.save(account);
     }
+
 
     private AccountResponse mapToResponse(Account account) {
         return AccountResponse.builder()
