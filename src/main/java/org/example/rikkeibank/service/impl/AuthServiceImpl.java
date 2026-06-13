@@ -1,10 +1,7 @@
 package org.example.rikkeibank.service.impl;
 
 import lombok.RequiredArgsConstructor;
-import org.example.rikkeibank.dto.request.LoginRequest;
-import org.example.rikkeibank.dto.request.LogoutRequest;
-import org.example.rikkeibank.dto.request.RefreshTokenRequest;
-import org.example.rikkeibank.dto.request.RegisterRequest;
+import org.example.rikkeibank.dto.request.*;
 import org.example.rikkeibank.dto.response.LoginResponse;
 import org.example.rikkeibank.dto.response.RefreshTokenResponse;
 import org.example.rikkeibank.dto.response.UserResponse;
@@ -114,7 +111,7 @@ public class AuthServiceImpl implements AuthService {
         RefreshToken token = RefreshToken.builder()
                 .token(refreshToken)
                 .user(user)
-                .expiryDate(LocalDateTime.now().plusDays(7))
+                .expiryDate(LocalDateTime.now().plusDays(1))
                 .revoked(false)
                 .build();
 
@@ -151,7 +148,7 @@ public class AuthServiceImpl implements AuthService {
         RefreshToken token = RefreshToken.builder()
                 .token(newRefreshToken)
                 .user(oldToken.getUser())
-                .expiryDate(LocalDateTime.now().plusDays(7))
+                .expiryDate(LocalDateTime.now().plusDays(1))
                 .revoked(false)
                 .build();
 
@@ -190,4 +187,14 @@ public class AuthServiceImpl implements AuthService {
         }
         return authorizationHeader.substring(7);
     }
+    @Override
+    @Transactional
+    public void forgotPassword(ForgotPasswordRequest request) {
+        User user = userRepository.findByUsername(request.getUsername())
+                .orElseThrow(() -> new ResourceNotFoundException("User không tồn tại"));
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+    }
+
 }

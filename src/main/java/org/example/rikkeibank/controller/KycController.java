@@ -6,6 +6,7 @@ import org.example.rikkeibank.dto.request.KycApproveRequest;
 import org.example.rikkeibank.dto.request.KycUploadRequest;
 import org.example.rikkeibank.entity.KycProfile;
 import org.example.rikkeibank.service.KycService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -28,7 +29,7 @@ public class KycController {
                 request.getFrontImage(),
                 request.getBackImage()
         );
-        return ResponseEntity.ok(kycProfile);
+        return ResponseEntity.status(HttpStatus.CREATED).body(kycProfile);
     }
 
     @PutMapping("/approve/{kycId}")

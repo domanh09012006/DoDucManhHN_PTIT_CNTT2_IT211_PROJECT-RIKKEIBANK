@@ -2,14 +2,12 @@ package org.example.rikkeibank.controller;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.example.rikkeibank.dto.request.LoginRequest;
-import org.example.rikkeibank.dto.request.LogoutRequest;
-import org.example.rikkeibank.dto.request.RefreshTokenRequest;
-import org.example.rikkeibank.dto.request.RegisterRequest;
+import org.example.rikkeibank.dto.request.*;
 import org.example.rikkeibank.dto.response.LoginResponse;
 import org.example.rikkeibank.dto.response.RefreshTokenResponse;
 import org.example.rikkeibank.dto.response.UserResponse;
 import org.example.rikkeibank.service.AuthService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -25,7 +23,7 @@ public class AuthController {
     public ResponseEntity<UserResponse> register(
             @Valid @RequestBody RegisterRequest request
     ) {
-        return ResponseEntity.ok(authService.register(request));
+        return ResponseEntity.status(HttpStatus.CREATED).body(authService.register(request));
     }
 
     @PostMapping("/login")
@@ -51,4 +49,12 @@ public class AuthController {
         authService.logout(authorizationHeader, request);
         return ResponseEntity.ok("Đăng xuất thành công");
     }
+    @PostMapping("/forgot-password")
+    public ResponseEntity<String> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest request
+    ) {
+        authService.forgotPassword(request);
+        return ResponseEntity.ok("Đổi mật khẩu thành công");
+    }
+
 }

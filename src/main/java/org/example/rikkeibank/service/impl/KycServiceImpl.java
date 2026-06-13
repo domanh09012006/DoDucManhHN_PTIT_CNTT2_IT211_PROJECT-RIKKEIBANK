@@ -6,6 +6,7 @@ import org.example.rikkeibank.dto.request.KycApproveRequest;
 import org.example.rikkeibank.entity.KycProfile;
 import org.example.rikkeibank.entity.User;
 import org.example.rikkeibank.enums.KycStatus;
+import org.example.rikkeibank.exception.ResourceNotFoundException;
 import org.example.rikkeibank.repository.KycProfileRepository;
 import org.example.rikkeibank.repository.UserRepository;
 import org.example.rikkeibank.service.CloudinaryService;
@@ -29,7 +30,7 @@ public class KycServiceImpl implements KycService {
     @Transactional
     public KycProfile uploadKyc(Long userId, MultipartFile frontImage, MultipartFile backImage) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy user"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy user"));
 
         String frontUrl = cloudinaryService.upload(frontImage, "rikkebank/kyc/front");
         String backUrl = cloudinaryService.upload(backImage, "rikkebank/kyc/back");
@@ -54,10 +55,14 @@ public class KycServiceImpl implements KycService {
     @Transactional
     public KycProfile approveKyc(Long kycId, KycApproveRequest request) {
         KycProfile kyc = kycProfileRepository.findById(kycId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy hồ sơ KYC với id: " + kycId));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hồ sơ KYC với id: " + kycId));
 
         if (request.getStatus() == null) {
-            throw new RuntimeException("Trạng thái KYC không được để trống");
+            throw new IllegalArgumentException("Trạng thái KYC không được để trống");
+        }
+
+        if (request.getStatus() != KycStatus.CONFIRM && request.getStatus() != KycStatus.REJECT) {
+            throw new IllegalArgumentException("Chỉ được duyệt trạng thái CONFIRM hoặc REJECT");
         }
 
         User user = kyc.getUser();
@@ -68,9 +73,9 @@ public class KycServiceImpl implements KycService {
         if (request.getStatus() == KycStatus.CONFIRM) {
             kyc.setRejectReason(null);
             user.setIsKyc(true);
-        } else if (request.getStatus() == KycStatus.REJECT) {
+        } else {
             if (request.getRejectReason() == null || request.getRejectReason().isBlank()) {
-                throw new RuntimeException("Vui lòng nhập lý do từ chối");
+                throw new IllegalArgumentException("Vui lòng nhập lý do từ chối");
             }
             kyc.setRejectReason(request.getRejectReason());
             user.setIsKyc(false);

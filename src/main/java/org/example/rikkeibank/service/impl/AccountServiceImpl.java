@@ -9,6 +9,7 @@ import org.example.rikkeibank.dto.response.BalanceResponse;
 import org.example.rikkeibank.entity.Account;
 import org.example.rikkeibank.entity.User;
 import org.example.rikkeibank.enums.AccountStatus;
+import org.example.rikkeibank.exception.ResourceNotFoundException;
 import org.example.rikkeibank.repository.AccountRepository;
 import org.example.rikkeibank.repository.UserRepository;
 import org.example.rikkeibank.service.AccountService;
@@ -35,14 +36,14 @@ public class AccountServiceImpl implements AccountService {
     @Override
     public AccountResponse findById(Long id) {
         Account account = accountRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản"));
         return mapToResponse(account);
     }
 
     @Override
     public BalanceResponse getBalance(String accountNumber) {
         Account account = accountRepository.findByAccountNumber(accountNumber)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản"));
 
         return BalanceResponse.builder()
                 .accountNumber(account.getAccountNumber())
@@ -52,13 +53,16 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     public AccountResponse create(CreateAccountRequest request) {
-
         if (accountRepository.existsByAccountNumber(request.getAccountNumber())) {
             throw new RuntimeException("Số tài khoản đã tồn tại");
         }
 
         User user = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy user"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy user"));
+
+        if (Boolean.FALSE.equals(user.getEnabled())) {
+            throw new RuntimeException("Không thể tạo tài khoản cho user đã bị khóa");
+        }
 
         Account account = Account.builder()
                 .accountNumber(request.getAccountNumber())
@@ -68,30 +72,30 @@ public class AccountServiceImpl implements AccountService {
                 .user(user)
                 .build();
 
-        return mapToResponse(accountRepository.save(account));
+        account = accountRepository.save(account);
+        return mapToResponse(account);
     }
 
     @Override
     public AccountResponse update(Long id, UpdateAccountRequest request) {
-
         Account account = accountRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản"));
 
         account.setPinCode(request.getPinCode());
         account.setStatus(request.getStatus());
 
-        return mapToResponse(accountRepository.save(account));
+        account = accountRepository.save(account);
+        return mapToResponse(account);
     }
 
     @Override
     public void delete(Long id) {
         Account account = accountRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản"));
 
         account.setStatus(AccountStatus.BLOCKED);
         accountRepository.save(account);
     }
-
 
     private AccountResponse mapToResponse(Account account) {
         return AccountResponse.builder()
@@ -102,12 +106,16 @@ public class AccountServiceImpl implements AccountService {
                 .userId(account.getUser() != null ? account.getUser().getId() : null)
                 .build();
     }
+
     @Override
     @Transactional
     public AccountResponse changePin(String accountNumber, ChangePinRequest request) {
-
         Account account = accountRepository.findByAccountNumber(accountNumber)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản"));
+
+        if (account.getStatus() != AccountStatus.ACTIVE) {
+            throw new RuntimeException("Tài khoản đang bị khóa");
+        }
 
         if (!account.getPinCode().equals(request.getOldPin())) {
             throw new RuntimeException("Mã PIN cũ không đúng");

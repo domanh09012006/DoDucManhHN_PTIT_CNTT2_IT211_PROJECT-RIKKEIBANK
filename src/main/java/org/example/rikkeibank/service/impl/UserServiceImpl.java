@@ -24,7 +24,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final AccountRepository accountRepository;
-    private final PasswordEncoder passwordEncoder;   // ← Thêm dòng này
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public UserResponse create(UserCreateRequest request) {
@@ -69,12 +69,14 @@ public class UserServiceImpl implements UserService {
     public UserResponse update(Long id, UserUpdateRequest request) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User khong tim thay"));
+
         if (!user.getEmail().equals(request.getEmail()) && userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email da ton tai");
         }
         if (!user.getPhone().equals(request.getPhone()) && userRepository.existsByPhone(request.getPhone())) {
             throw new RuntimeException("Phone da ton tai");
         }
+
         user.setFullName(request.getFullName());
         user.setEmail(request.getEmail());
         user.setPhone(request.getPhone());
@@ -92,10 +94,8 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public Page<UserResponse> findAll(int page, int size) {
-        return userRepository.findAll(PageRequest.of(page, size))
-                .map(this::mapToResponse);
+        return userRepository.findAllActiveUsers(PageRequest.of(page, size));
     }
-
 
     @Override
     public void delete(Long id) {
@@ -105,7 +105,6 @@ public class UserServiceImpl implements UserService {
         user.setEnabled(false);
         userRepository.save(user);
     }
-
 
     private UserResponse mapToResponse(User user) {
         return UserResponse.builder()

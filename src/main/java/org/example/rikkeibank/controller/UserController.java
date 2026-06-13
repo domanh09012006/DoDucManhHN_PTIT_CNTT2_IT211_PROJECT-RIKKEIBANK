@@ -7,6 +7,7 @@ import org.example.rikkeibank.dto.request.UserUpdateRequest;
 import org.example.rikkeibank.dto.response.UserResponse;
 import org.example.rikkeibank.service.UserService;
 import org.springframework.data.domain.Page;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -36,7 +37,7 @@ public class UserController {
     public ResponseEntity<UserResponse> create(
             @Valid @RequestBody UserCreateRequest request
     ) {
-        return ResponseEntity.ok(userService.create(request));
+        return ResponseEntity.status(HttpStatus.CREATED).body(userService.create(request));
     }
 
     @PutMapping("/{id}")
@@ -48,8 +49,8 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<String> delete(@PathVariable Long id) {
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
         userService.delete(id);
-        return ResponseEntity.ok("Xóa user thành công");
+        return ResponseEntity.noContent().build();
     }
 }

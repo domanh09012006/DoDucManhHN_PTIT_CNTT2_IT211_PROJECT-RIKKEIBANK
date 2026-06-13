@@ -1,5 +1,6 @@
 package org.example.rikkeibank.service;
 
+import org.example.rikkeibank.dto.request.ForgotPasswordRequest;
 import org.example.rikkeibank.dto.request.LoginRequest;
 import org.example.rikkeibank.dto.request.LogoutRequest;
 import org.example.rikkeibank.dto.request.RefreshTokenRequest;
@@ -17,4 +18,6 @@ public interface AuthService {
     RefreshTokenResponse refreshToken(RefreshTokenRequest request);
 
     void logout(String accessToken, LogoutRequest request);
+
+    void forgotPassword(ForgotPasswordRequest request);
 }
